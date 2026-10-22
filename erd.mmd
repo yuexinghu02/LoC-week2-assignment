@@ -1,0 +1,51 @@
+erDiagram
+    books ||--o{ book_authors : "written by"
+    authors ||--o{ book_authors : "writes"
+    books ||--o{ copies : "shelved as"
+    copies ||--o{ loans : "lent in"
+    members ||--o{ loans : "borrows"
+
+    books {
+        INTEGER book_id PK
+        INTEGER goodreads_book_id UK
+        TEXT isbn
+        TEXT title "NOT NULL"
+        TEXT original_title
+        INTEGER publication_year
+        TEXT language_code
+        REAL average_rating "0 to 5"
+        INTEGER ratings_count ">= 0"
+        TEXT image_url
+    }
+    authors {
+        INTEGER author_id PK
+        TEXT name UK "NOT NULL"
+    }
+    book_authors {
+        INTEGER book_id PK, FK "ON DELETE CASCADE"
+        INTEGER author_id PK, FK
+        INTEGER author_order "default 1"
+    }
+    members {
+        INTEGER member_id PK
+        TEXT first_name "NOT NULL"
+        TEXT last_name "NOT NULL"
+        TEXT email UK
+        TEXT phone
+        TEXT joined_on "default today"
+    }
+    copies {
+        INTEGER copy_id PK
+        INTEGER book_id FK "NOT NULL"
+        TEXT acquired_on "default today"
+        TEXT condition "new, good, worn, damaged"
+        TEXT status "available, on_loan, lost, retired"
+    }
+    loans {
+        INTEGER loan_id PK
+        INTEGER copy_id FK "one open loan per copy"
+        INTEGER member_id FK "NOT NULL"
+        TEXT loaned_on "default today"
+        TEXT due_on "default today + 21 days"
+        TEXT returned_on "NULL while out"
+    }
