@@ -68,3 +68,30 @@ CREATE INDEX idx_loans_member ON loans (member_id);
 CREATE INDEX idx_books_title ON books (title);
 -- A copy can only be out on one open loan at a time.
 CREATE UNIQUE INDEX idx_loans_one_open_per_copy ON loans (copy_id) WHERE returned_on IS NULL;
+
+-- One row per physical copy, plus one row for each title with no copies (copy columns NULL),
+-- with author and copy details flattened so the catalog can be sorted on any mix of columns.
+CREATE VIEW book_catalog AS
+SELECT b.book_id,
+       b.title,
+       pa.name AS primary_author,
+       -- Last word of the primary author's name, for shelf-style sorting ("Tolkien" for "J.R.R. Tolkien").
+       substr(pa.name, length(rtrim(pa.name, replace(pa.name, ' ', ''))) + 1) AS author_last_name,
+       (SELECT group_concat(name, ', ')
+        FROM (SELECT a.name FROM book_authors x JOIN authors a USING (author_id)
+              WHERE x.book_id = b.book_id ORDER BY x.author_order)) AS all_authors,
+       b.publication_year,
+       b.language_code,
+       b.average_rating,
+       b.ratings_count,
+       c.copy_id,
+       c.condition,
+       -- Best to worst, so sorting by condition isn't alphabetical.
+       CASE c.condition WHEN 'new' THEN 1 WHEN 'good' THEN 2 WHEN 'worn' THEN 3 WHEN 'damaged' THEN 4 END
+           AS condition_rank,
+       c.status,
+       c.acquired_on
+FROM books b
+LEFT JOIN book_authors ba ON ba.book_id = b.book_id AND ba.author_order = 1
+LEFT JOIN authors pa ON pa.author_id = ba.author_id
+LEFT JOIN copies c ON c.book_id = b.book_id;
